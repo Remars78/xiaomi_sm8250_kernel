@@ -37,10 +37,7 @@ jobs:
       - name: Patch alioth_defconfig (Fix KALLSYMS & KPROBES)
         run: |
           cd arch/arm64/configs/vendor
-          # Убираем "is not set" и включаем KALLSYMS
           sed -i 's/# CONFIG_KALLSYMS is not set/CONFIG_KALLSYMS=y\nCONFIG_KALLSYMS_ALL=y/g' alioth_defconfig
-          
-          # Включаем KPROBES
           echo "CONFIG_KPROBES=y" >> alioth_defconfig
           echo "CONFIG_HAVE_KPROBES=y" >> alioth_defconfig
           echo "CONFIG_KPROBE_EVENTS=y" >> alioth_defconfig
@@ -73,11 +70,18 @@ jobs:
           cd AnyKernel3
           rm -rf .git
           cp ../out/arch/arm64/boot/Image ./
+          
           if [ -f ../out/arch/arm64/boot/dtbo.img ]; then
             cp ../out/arch/arm64/boot/dtbo.img ./
           fi
+          if [ -f ../out/arch/arm64/boot/dts/vendor/qcom/sm8250.dtb ]; then
+            cp ../out/arch/arm64/boot/dts/vendor/qcom/sm8250.dtb ./dtb
+          elif [ -f ../out/arch/arm64/boot/dtb ]; then
+            cp ../out/arch/arm64/boot/dtb ./dtb
+          elif [ -f ../out/arch/arm64/boot/dtb.img ]; then
+            cp ../out/arch/arm64/boot/dtb.img ./dtb
+          fi
           
-          # Настраиваем AnyKernel3 под Alioth
           sed -i 's/kernel.string=.*/kernel.string=Alioth Kernel Patched by Remars78/' anykernel.sh
           sed -i 's/device.name1=.*/device.name1=alioth/' anykernel.sh
           sed -i 's/device.name2=.*/device.name2=poco f3/' anykernel.sh
