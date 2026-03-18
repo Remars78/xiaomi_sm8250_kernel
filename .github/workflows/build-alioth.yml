@@ -43,7 +43,6 @@ jobs:
           echo "CONFIG_KPROBE_EVENTS=y" >> alioth_defconfig
           echo "CONFIG_OVERLAY_FS=y" >> alioth_defconfig
           
-          # Убираем неподдерживаемые флаги LLVM для Azure Clang 15
           cd ../../../../
           sed -i 's/-funified-lto//g' Makefile
           sed -i 's/-fsplit-machine-functions//g' Makefile
@@ -51,10 +50,8 @@ jobs:
       - name: Apply KernelPatch / KernelSU Next
         run: |
           if [ "${{ github.event.inputs.ksu_type }}" == "kernelsu-next" ]; then
-            echo "Устанавливаем KernelSU Next..."
             curl -LSs "https://raw.githubusercontent.com/rifsxd/KernelSU-Next/next/kernel/setup.sh" | bash -s next
           elif [ "${{ github.event.inputs.ksu_type }}" == "kernelpatch" ]; then
-            echo "Устанавливаем классический KernelPatch..."
             curl -LSs "https://raw.githubusercontent.com/bmax121/KernelPatch/main/patch.sh" | bash
           fi
 
@@ -87,11 +84,41 @@ jobs:
             cp ../out/arch/arm64/boot/dtb.img ./dtb
           fi
           
-          sed -i 's/kernel.string=.*/kernel.string=Alioth Kernel Patched by Remars78/' anykernel.sh
-          sed -i 's/device.name1=.*/device.name1=alioth/' anykernel.sh
-          sed -i 's/device.name2=.*/device.name2=poco f3/' anykernel.sh
-          sed -i 's|block=.*|block=/dev/block/bootdevice/by-name/boot;|' anykernel.sh
-          sed -i 's/is_slot_device=.*/is_slot_device=auto;/' anykernel.sh
+          cat << 'ANYKERNEL_EOF' > anykernel.sh
+          # global properties
+          properties() { '
+          kernel.string=Alioth Kernel Patched by Remars78
+          do.devicecheck=1
+          do.modules=0
+          do.systemless=1
+          do.cleanup=1
+          do.cleanuponabort=0
+          device.name1=alioth
+          device.name2=poco f3
+          device.name3=Poco F3
+          device.name4=Alioth
+          device.name5=
+          supported.versions=
+          supported.patchlevels=
+          supported.vendorpatchlevels=
+          '; }
+          
+          # boot shell variables
+          BLOCK=/dev/block/bootdevice/by-name/boot;
+          IS_SLOT_DEVICE=auto;
+          RAMDISK_COMPRESSION=auto;
+          PATCH_VBMETA_FLAG=auto;
+          
+          . tools/ak3-core.sh;
+          dump_boot;
+          write_boot;
+          if [ -f dtb ]; then
+            flash_dtb;
+          fi
+          if [ -f dtbo.img ]; then
+            flash_dtbo;
+          fi
+          ANYKERNEL_EOF
           
           zip -r9 ../Alioth-Kernel-Patched.zip *
           
