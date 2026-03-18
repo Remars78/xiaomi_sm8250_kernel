@@ -30,11 +30,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc bison build-essential ccache curl flex g++-multilib gcc-multilib git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-dev lib32z1-dev liblz4-tool libncurses5 libncurses5-dev libsdl1.2-dev libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool squashfs-tools xsltproc zip zlib1g-dev python3 llvm lld
           
-      - name: Download Toolchain (Azure Clang 14)
+      - name: Download Toolchain (Neutron Clang)
         run: |
-          git clone --depth=1 https://gitlab.com/Panchajanya1999/azure-clang.git clang
+          mkdir clang
+          cd clang
+          curl -LO "https://raw.githubusercontent.com/Neutron-Toolchains/antman/main/antman"
+          chmod +x antman
+          ./antman -S
+          ./antman --patch=glibc
           
-      - name: Patch alioth_defconfig (Fix KALLSYMS & KPROBES)
+      - name: Patch alioth_defconfig & Makefile
         run: |
           cd arch/arm64/configs/vendor
           sed -i 's/# CONFIG_KALLSYMS is not set/CONFIG_KALLSYMS=y\nCONFIG_KALLSYMS_ALL=y/g' alioth_defconfig
@@ -42,6 +47,11 @@ jobs:
           echo "CONFIG_HAVE_KPROBES=y" >> alioth_defconfig
           echo "CONFIG_KPROBE_EVENTS=y" >> alioth_defconfig
           echo "CONFIG_OVERLAY_FS=y" >> alioth_defconfig
+          
+          # Убираем неподдерживаемые флаги LLVM на всякий случай
+          cd ../../../../
+          sed -i 's/-funified-lto//g' Makefile
+          sed -i 's/-fsplit-machine-functions//g' Makefile
 
       - name: Apply KernelPatch / KernelSU Next
         run: |
